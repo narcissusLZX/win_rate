@@ -1,6 +1,12 @@
 from collections import Counter
 import random
+import json
 import copy
+
+type = ["High Card", "Pair", "Two Pairs", "Three of a kind", "Straight", "Flush", "Fullhouse", "Four of a kind", "Straight Flush"]
+number2card = [str(x) for x in range(11)]+["J", "Q", "K", "A"]
+number2decor = ['s','h','c','d']
+player_cnt = 0
 
 class Card():
     def __init__(self, number=2, suit=0):
@@ -12,6 +18,8 @@ class Card():
             number = 12
         elif (number == 'J'):
             number = 11
+        elif (number == 'T'):
+            number = 10
         if (suit == 's'):
             suit = 0
         elif (suit == 'h'):
@@ -29,6 +37,8 @@ class Card():
     def __lt__(self, obj):
         return self.number < obj.number or (self.number == obj.number and self.suit < obj.suit)
 
+    def __str__(self) -> str:
+        return number2card[self.number]+number2decor[self.suit]
 
 class Five():
     def __init__(self, five_cards):
@@ -108,6 +118,10 @@ class Player():
     def __init__(self, card1, card2):
         self.cards = [card1, card2]
         self.best = None
+        self.final = [[0,0] for _ in range(9)]
+        global player_cnt
+        player_cnt += 1
+        self.idx = player_cnt
 
     def calc_best(self, common):
         self.best = None
@@ -126,28 +140,53 @@ class Player():
 
     def __lt__(self, obj):
         return self.best < obj.best
+    
+    def print(self, total_times):
+        print("=="*20)
+        print("Player {}:".format(self.idx))
+        print(self.cards[0], self.cards[1])
+        total_wins = sum([x[1] for x in self.final])
+        print("total win rates:", total_wins / total_times)
+        for i in range(9):
+            print("{}: hit rate:{}, win_rate:{} ".format(type[i], self.final[i][0] / total_times, self.final[i][1] / total_times))
+            
 
 
 def calc_winner(common, players):
     ret = [0]*len(players)
     for player in players:
         player.calc_best(common)
+        player.final[player.best.value][0] += 1
     for i in range(len(players)):
         flag = True
         for player in players:
             flag = flag and (player < players[i] or player == players[i])
         if (flag):
             ret[i] = 1
-
+            players[i].final[players[i].best.value][1] += 1
     return ret
 
 
 if __name__ == "__main__":
-    players = [Player(Card('K',0), Card('9',1)), Player(Card('Q', 1), Card('A', 0))]
-    common = [Card(9,2),Card(7,3),Card(4,0)]
-    mode =5 - len(common)
+    try:
+        with open("game.json", "r", encoding="utf-8") as f:
+            game = json.load(f)
+            players = []
+            for player_cards in game["players"]:
+                assert len(player_cards) == 2, "each player should have 2 cards"
+                Card1 = Card(player_cards[0][:-1], player_cards[0][-1])
+                Card2 = Card(player_cards[1][:-1], player_cards[1][-1])
+                players.append(Player(Card1, Card2))
+            common = []
+            if ("common" in game):
+                for common_card in game["common"]:
+                    common.append(Card(common_card[:-1], common_card[-1]))
+    except:
+        players = [Player(Card('K',0), Card('9',1)), Player(Card('Q', 1), Card('A', 0))]
+        common = [Card(9,2),Card(7,3),Card(4,0)]
+    total_times = 5000
+    mode = 5 - len(common)
     win_times = [0]*len(players)
-    total_times = 1000
     all_cards = []
     for number in range(2, 15):
         for suit in range(4):
@@ -168,5 +207,11 @@ if __name__ == "__main__":
         win = calc_winner(common+s_common, players)
         for i in range(len(players)):
             win_times[i] += win[i]
-    print(win_times, total_times)
-    print([win_time / total_times for win_time in win_times])
+    #print(win_times, total_times)
+    #print([win_time / total_times for win_time in win_times])
+    print("=="*20)
+    print("Common Cards:{}".format(','.join(str(common_card) for common_card in common)))
+    
+    for idx,player in enumerate(players):
+        player.print(total_times)
+    print("=="*20)
