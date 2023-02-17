@@ -168,6 +168,8 @@ def calc_winner(common, players):
 
 
 if __name__ == "__main__":
+    
+    total_times = 5000
     try:
         with open("game.json", "r", encoding="utf-8") as f:
             game = json.load(f)
@@ -181,10 +183,11 @@ if __name__ == "__main__":
             if ("common" in game):
                 for common_card in game["common"]:
                     common.append(Card(common_card[:-1], common_card[-1]))
+            if ("total_times" in game):
+                total_times = int(game["total_times"])
     except:
         players = [Player(Card('K',0), Card('9',1)), Player(Card('Q', 1), Card('A', 0))]
         common = [Card(9,2),Card(7,3),Card(4,0)]
-    total_times = 5000
     mode = 5 - len(common)
     win_times = [0]*len(players)
     all_cards = []
